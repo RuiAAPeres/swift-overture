@@ -1,36 +1,32 @@
-imports = \
-	@testable import OvertureTests;
-
 xcodeproj:
-	swift package generate-xcodeproj --xcconfig-overrides=Development.xcconfig
+	PF_DEVELOP=1 swift run xcodegen
 
-linux-main:
-	sourcery \
-		--sources ./Tests/ \
-		--templates ./.sourcery-templates/ \
-		--output ./Tests/ \
-		--args testimports='$(imports)' \
-		&& mv ./Tests/LinuxMain.generated.swift ./Tests/LinuxMain.swift
-
-test-linux: linux-main
-	docker build --tag overture-testing . \
-		&& docker run --rm overture-testing
+test-linux:
+	docker run \
+		--rm \
+		-v "$(PWD):$(PWD)" \
+		-w "$(PWD)" \
+		swift:5.1 \
+		bash -c 'make test-swift'
 
 test-macos:
 	set -o pipefail && \
 	xcodebuild test \
-		-scheme Overture-Package \
+		-scheme Overture_macOS \
 		-destination platform="macOS" \
 		| xcpretty
 
 test-ios:
 	set -o pipefail && \
 	xcodebuild test \
-		-scheme Overture-Package \
-		-destination platform="iOS Simulator,name=iPhone 8,OS=11.3" \
+		-scheme Overture_iOS \
+		-destination platform="iOS Simulator,name=iPhone 11 Pro Max,OS=13.2.2" \
 		| xcpretty
 
 test-swift:
-	swift test
+	swift test \
+		--enable-pubgrub-resolver \
+		--enable-test-discovery \
+		--parallel
 
-test-all: test-linux test-macos test-ios
+test-all: test-linux test-macos test-ios test-swift
